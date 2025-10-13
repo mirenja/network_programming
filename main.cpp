@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
@@ -33,10 +33,12 @@ int main()
 4. Send and receive messages
 5. Close the socket
     */
-    int server_fd = socket(AF_INET,SOCK_STREAM,0);
+    
     const int PORT = 8080;
     struct sockaddr_in address{};
-
+    
+    // create socket file descriptor(fd)
+    int server_fd = socket(AF_INET,SOCK_STREAM,0);
     if (server_fd < 0){
         std::cerr << "cannot create socket\n";
     }
@@ -49,14 +51,57 @@ int main()
     //int bind(int socket, const struct sockaddr *address, socklen_t address_len);
     //reinterpret cast to say this is the address of or its a pointer to sockaddr type not sockaddr_in type as defined in the lib
     //print the system error, use std::strerror(errno) from <cerrno>
+    //bind returns 0 on success and -1 on failure
+
+    //bind or naming. associate it with the address
     if(bind(server_fd, reinterpret_cast<sockaddr*>(&address),sizeof(address)) < 0){
         std::cerr << "binding failed" << std::strerror(errno) << std::endl;
         close(server_fd);
         return 1;
     }
+
+    //listening and accept
+
     std::cout<< "Bind successful, server listening on port " << PORT << std::endl;
+    if(listen(server_fd,5) < 0){
+        std::cerr<< "Listen Error "  <<std::strerror(errno) << std::endl;
+    }
+    if((new_socket = accept(server_fd,reinterpret_cast<sockaddr*>(&client_address), &client_addrlen))< 0){
+        std::cerr<< "Accept error "  <<std::strerror(errno) << std::endl; 
+    }
+
+    //send and receive messages
+
+    const expr unsigned size_of_buffer = 1024;
+    char buffer[size_of_buffer] = {0};
+
+    // Read data from the client
+    int valread = read(new_socket, buffer, size_of_buffer);
+    if (valread < 0) {
+        std::cerr << "Read error: " << std::strerror(errno) << std::endl;
+    } else if (valread == 0) {
+        std::cout << "Client disconnected" << std::endl;
+    } else {
+        std::cout << "Message received: " << buffer << std::endl;
+    }
+
+    // Send response to the client
+    //const char *hello = "Hello from the server";  this doesnt make sense, check later pointing a pointer to a string not an address
+    const char message[] = "Hello from the server";
+    const char *hello = message;
+    if (write(new_socket, hello, strlen(hello)) < 0) {
+        std::cerr << "Write error: " << std::strerror(errno) << std::endl;
+    } else {
+        std::cout << "Message sent to client" << std::endl;
+    }
+
+
     close(server_fd);
    
 
     return 0;
 }
+
+
+
+ 
