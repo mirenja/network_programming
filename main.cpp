@@ -4,7 +4,7 @@
 #include <arpa/inet.h> 
 #include <unistd.h>  
 
-
+///this is entirely provided by chatgpt for testing:
 int main()
 {
     /*
@@ -36,7 +36,9 @@ int main()
     
     const int PORT = 8080;
     struct sockaddr_in address{};
-    
+    socklen_t addrlen = sizeof(address);
+    int new_socket;
+
     // create socket file descriptor(fd)
     int server_fd = socket(AF_INET,SOCK_STREAM,0);
     if (server_fd < 0){
@@ -57,48 +59,52 @@ int main()
     if(bind(server_fd, reinterpret_cast<sockaddr*>(&address),sizeof(address)) < 0){
         std::cerr << "binding failed" << std::strerror(errno) << std::endl;
         close(server_fd);
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     //listening and accept
 
     std::cout<< "Bind successful, server listening on port " << PORT << std::endl;
-    if(listen(server_fd,5) < 0){
+    if(listen(server_fd,128) < 0){
         std::cerr<< "Listen Error "  <<std::strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
     }
-    if((new_socket = accept(server_fd,reinterpret_cast<sockaddr*>(&client_address), &client_addrlen))< 0){
-        std::cerr<< "Accept error "  <<std::strerror(errno) << std::endl; 
+  
+    while(true){
+
+        std::cout << "\n+++++++ Waiting for new connection ++++++++\n\n"<<std::endl;
+        if((new_socket = accept(server_fd,reinterpret_cast<sockaddr*>(&address), &addrlen))< 0){
+            std::cerr<< "Accept error "  <<std::strerror(errno) << std::endl; 
+            exit(EXIT_FAILURE);
+
+        }
+
+        //send and receive messages
+        constexpr unsigned size_of_buffer = 1024;
+        char buffer[size_of_buffer] = {0};
+
+        const char message[] = "Hello from the other siddddeeeeee!!!! ";
+        const char *hello = message;
+        // Read data from the client
+        int valread = read(new_socket, buffer, size_of_buffer);
+        if (valread < 0) {
+            std::cerr << "Read error: " << std::strerror(errno) << std::endl;
+        } else if (valread == 0) {
+            std::cout << "Client disconnected" << std::endl;
+        } else {
+            std::cout << "Message received: " << buffer << std::endl;
+        }
+        // Send response to the client
+        //const char *hello = "Hello from the server";  this doesnt make sense, check later pointing a pointer to a string not an address
+
+        if (write(new_socket, hello, strlen(hello)) < 0) {
+            std::cerr << "Write error: " << std::strerror(errno) << std::endl;
+        } else {
+            std::cout << "Message sent to client" << std::endl;
+        }
+        close(new_socket);
+
     }
-
-    //send and receive messages
-
-    const expr unsigned size_of_buffer = 1024;
-    char buffer[size_of_buffer] = {0};
-
-    // Read data from the client
-    int valread = read(new_socket, buffer, size_of_buffer);
-    if (valread < 0) {
-        std::cerr << "Read error: " << std::strerror(errno) << std::endl;
-    } else if (valread == 0) {
-        std::cout << "Client disconnected" << std::endl;
-    } else {
-        std::cout << "Message received: " << buffer << std::endl;
-    }
-
-    // Send response to the client
-    //const char *hello = "Hello from the server";  this doesnt make sense, check later pointing a pointer to a string not an address
-    const char message[] = "Hello from the server";
-    const char *hello = message;
-    if (write(new_socket, hello, strlen(hello)) < 0) {
-        std::cerr << "Write error: " << std::strerror(errno) << std::endl;
-    } else {
-        std::cout << "Message sent to client" << std::endl;
-    }
-
-
-    close(server_fd);
-   
-
     return 0;
 }
 
