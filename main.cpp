@@ -83,7 +83,7 @@ int main()
         constexpr unsigned size_of_buffer = 1024;
         char buffer[size_of_buffer] = {0};
 
-        const char message[] = "Hello from the other siddddeeeeee!!!! ";
+        const char message[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
         const char *hello = message;
         // Read data from the client
         int valread = read(new_socket, buffer, size_of_buffer);
