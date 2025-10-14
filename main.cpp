@@ -4,7 +4,7 @@
 #include <arpa/inet.h> 
 #include <unistd.h>  
 
-///this is entirely provided by chatgpt for testing:
+
 int main()
 {
     /*
@@ -75,7 +75,7 @@ int main()
         std::cout << "\n+++++++ Waiting for new connection ++++++++\n\n"<<std::endl;
         if((new_socket = accept(server_fd,reinterpret_cast<sockaddr*>(&address), &addrlen))< 0){
             std::cerr<< "Accept error "  <<std::strerror(errno) << std::endl; 
-            exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE); 
 
         }
 
@@ -85,15 +85,17 @@ int main()
 
         const char message[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
         const char *hello = message;
+
         // Read data from the client
         int valread = read(new_socket, buffer, size_of_buffer);
         if (valread < 0) {
             std::cerr << "Read error: " << std::strerror(errno) << std::endl;
         } else if (valread == 0) {
             std::cout << "Client disconnected" << std::endl;
-        } else {
-            std::cout << "Message received: " << buffer << std::endl;
         }
+
+
+         std::cout << "Request received:\n " << buffer << std::endl;
         // Send response to the client
         //const char *hello = "Hello from the server";  this doesnt make sense, check later pointing a pointer to a string not an address
 

@@ -5,6 +5,7 @@
 #include <unistd.h>     // for read, write, close
 #include <cstdlib>      // for EXIT_FAILURE
 
+///this is entirely provided by chatgpt for testing:
 constexpr int PORT = 8080;
 
 int main() {
