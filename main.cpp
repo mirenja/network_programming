@@ -3,6 +3,7 @@
 #include <netinet/in.h> 
 #include <arpa/inet.h> 
 #include <unistd.h>  
+#include <string>
 
 
 int main()
@@ -69,9 +70,10 @@ int main()
         std::cerr<< "Listen Error "  <<std::strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
+    int connection_count = 0;
   
     while(true){
-
+        
         std::cout << "\n+++++++ Waiting for new connection ++++++++\n\n"<<std::endl;
         if((new_socket = accept(server_fd,reinterpret_cast<sockaddr*>(&address), &addrlen))< 0){
             std::cerr<< "Accept error "  <<std::strerror(errno) << std::endl; 
@@ -82,9 +84,16 @@ int main()
         //send and receive messages
         constexpr unsigned size_of_buffer = 1024;
         char buffer[size_of_buffer] = {0};
+        connection_count += 1;
 
-        const char message[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
-        const char *hello = message;
+        // const char message[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
+        // const char *hello = message;
+
+        std::string body = "Hello world! Connection #" + std::to_string(connection_count);
+        std::string response = "HTTP/1.1 200 OK\r\n"
+                       "Content-Type: text/plain\r\n"
+                       "Content-Length: " + std::to_string(body.size()) + "\r\n"
+                       "\r\n" + body;
 
         // Read data from the client
         int valread = read(new_socket, buffer, size_of_buffer);
@@ -99,12 +108,12 @@ int main()
         // Send response to the client
         //const char *hello = "Hello from the server";  this doesnt make sense, check later pointing a pointer to a string not an address
 
-        if (write(new_socket, hello, strlen(hello)) < 0) {
+        if (write(new_socket, response.c_str(), response.size()) < 0) {
             std::cerr << "Write error: " << std::strerror(errno) << std::endl;
         } else {
             std::cout << "Message sent to client" << std::endl;
         }
-        close(new_socket);
+        //close(new_socket);
 
     }
     return 0;

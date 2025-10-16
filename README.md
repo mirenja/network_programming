@@ -8,8 +8,22 @@ HTTP/2 → RFC 7540 and RFC 7541
 FTP → RFC959
 
 ###  Questions for fabio
-reusing the address variable
+- reusing the address variable 
+- low level sockets interaction need to be with characters? - move them to strings
 
 ## PSA
 clang++ -std=c++17 -o my_program my_file.cpp
 ./my_program  # Run the compiled program
+
+## next steps
+- maintain state
+- abstract those into classes.
+
+### pseudocode
+- Receive client connection request.
+- Read client request data.
+- Analyze the client request data, determine the request method (GET, POST, etc.), the requested URI and other request header information.
+- Process the request and generate response data.
+- Send the response data to the client.
+
+but everything in abstractions then call the necessary abstraction: add multi threading.
