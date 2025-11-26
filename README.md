@@ -14,6 +14,12 @@ FTP → RFC959
 ## PSA
 clang++ -std=c++17 -o my_program my_file.cpp
 ./my_program  # Run the compiled program
+clang++ -std=c++17 -o  server2 main1.cpp
+
+clang++ -std=c++17 -pthread -Wall -Wextra \
+    -o http_server \
+    main.cpp Socket.cpp HttpRequest.cpp HttpResponse.cpp ChatHandler.cpp HttpServer.cpp
+
 
 ## next steps
 - maintain state
