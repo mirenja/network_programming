@@ -8,6 +8,8 @@
 #include <functional>
 #include <map>
 #include <string>
+#include "ThreadPool.h"
+
 
 class HttpServer {
 public:
@@ -25,10 +27,12 @@ private:
     bool running_;
     int connection_count_;
     
+    ThreadPool pool_;
     std::map<std::string, RouteHandler> routes_;
     ChatHandler chat_handler_;
     
     void handleClient(Socket client_socket);
     HttpResponse routeRequest(const HttpRequest& request);
     std::string parseFormData(const std::string& body, const std::string& key);
+    
 };

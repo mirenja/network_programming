@@ -3,7 +3,7 @@
 #include <sstream>
 
 HttpServer::HttpServer(int port) 
-    : port_(port), running_(false), connection_count_(0) {
+    : port_(port), running_(false), connection_count_(0),pool_(std::thread::hardware_concurrency()){
     
     registerRoute("/", [this](const HttpRequest& req) {
         return HttpResponse::html(R"(
@@ -80,7 +80,12 @@ void HttpServer::run() {
         }
         
         connection_count_++;
-        handleClient(std::move(client_socket));
+        active_connections_++;
+        
+        pool_.enqueue([this, client=std::move(client)]() mutable {
+        handleClient(std::move(client));
+        active_connections_--;
+    });
     }
 }
 

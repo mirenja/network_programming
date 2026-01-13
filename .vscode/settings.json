@@ -109,7 +109,9 @@
     "csignal": "cpp",
     "forward_list": "cpp",
     "iomanip": "cpp",
-    "map": "cpp"
+    "map": "cpp",
+    "condition_variable": "cpp",
+    "future": "cpp"
   },
   "C_Cpp.default.compilerPath": "/usr/bin/clang++"
 }

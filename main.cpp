@@ -14,8 +14,7 @@ void signalHandler(int signal) {
 
 int main() {
     const int PORT = 8080;
-    
-    // Setup signal handling for graceful shutdown (Ctrl+C)
+
     std::signal(SIGINT, signalHandler);
     
     try {
