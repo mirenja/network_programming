@@ -3,7 +3,8 @@
 #include <sstream>
 
 HttpServer::HttpServer(int port) 
-    : port_(port), running_(false), connection_count_(0),pool_(std::thread::hardware_concurrency()){
+    : port_(port), running_(false), connection_count_(0){
+    // : port_(port), running_(false), connection_count_(0),pool_(std::thread::hardware_concurrency()){ #with thread pool
     
     registerRoute("/", [this](const HttpRequest& req) {
         return HttpResponse::html(R"(
@@ -66,7 +67,7 @@ void HttpServer::run() {
         std::cerr << "Failed to listen on port " << port_ << std::endl;
         return;
     }
-    
+    std::cout << "[SERVER SOCKET]\n";
     std::cout << "Server running on http://localhost:" << port_ << std::endl;
     std::cout << "Visit http://localhost:" << port_ << "/chat for the chat app" << std::endl;
     
@@ -78,14 +79,15 @@ void HttpServer::run() {
         if (!client_socket.isValid()) {
             continue;
         }
+        std::cout << "[CLIENT CONNECTED]\n";
         
         connection_count_++;
-        active_connections_++;
+        // active_connections_++;
         
-        pool_.enqueue([this, client=std::move(client)]() mutable {
-        handleClient(std::move(client));
-        active_connections_--;
-    });
+        // pool_.enqueue([this, client=std::move(client)]() mutable {
+        handleClient(std::move(client_socket));
+        // active_connections_--;
+    // });
     }
 }
 
@@ -100,6 +102,7 @@ void HttpServer::handleClient(Socket client_socket) {
     std::cout << "\n=== Request ===" << std::endl;
     std::cout << raw_request.substr(0, 200) << "..." << std::endl;
     
+    // parses into headers map and body , then send the response
     HttpRequest request;
     if (!request.parse(raw_request)) {
         std::cerr << "Failed to parse request" << std::endl;
@@ -117,6 +120,8 @@ void HttpServer::handleClient(Socket client_socket) {
     std::cout << "Sent " << response_str.size() << " bytes" << std::endl;
 }
 
+//here we are using a reference we could just use th request object directlc also , but that would be expensive since at runtime,
+//copies of the object will be created which will then
 HttpResponse HttpServer::routeRequest(const HttpRequest& request) {
     std::string path = request.getPath();
     

@@ -8,7 +8,7 @@
 #include <functional>
 #include <map>
 #include <string>
-#include "ThreadPool.h"
+// #include "ThreadPool.h"
 
 
 class HttpServer {
@@ -27,7 +27,7 @@ private:
     bool running_;
     int connection_count_;
     
-    ThreadPool pool_;
+    // ThreadPool pool_;
     std::map<std::string, RouteHandler> routes_;
     ChatHandler chat_handler_;
     

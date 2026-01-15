@@ -10,6 +10,7 @@ Socket::Socket()
 {
      // create socket file descriptor(fd)
     fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    std::cout << "Socket created with FD = " << fd_ << std::endl;
     if (fd_ < 0) {
         std::cerr << "Cannot create socket\n";
         return;
@@ -29,6 +30,7 @@ Socket::~Socket() {
 }
 
 //bind or naming. associate it with the address
+// if there is an error fd will return -1
 bool Socket::bind(int port) {
     if (fd_ < 0) return false;
 
@@ -67,6 +69,8 @@ Socket Socket::accept() {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
     int client_fd = ::accept(fd_, reinterpret_cast<sockaddr*>(&client_addr), &client_len);
+    std::cerr << "passed fd_  " << fd_ << std::endl;
+    std::cerr << "client fd_   " << client_fd << std::endl;
 
     if (client_fd < 0) {
         std::cerr << "Accept failed: " << std::strerror(errno) << "\n";
@@ -87,6 +91,7 @@ std::string Socket::receive(size_t buffer_size) {
 
     char buffer[buffer_size];
     ssize_t n = ::recv(fd_, buffer, buffer_size - 1, 0);
+    std::cout << "receive returns= " << n << std::endl;
 
     if (n <= 0) return "";
     buffer[n] = '\0';

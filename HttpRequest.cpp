@@ -38,7 +38,6 @@ bool HttpRequest::parse(const std::string& raw_request) {
     while (std::getline(stream, line) && line != "\r") {
         if (line.empty()) break;
         if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty()) break;
 
         //if colon is not found line.find return npos =-1
         size_t colon_pos = line.find(':');
@@ -47,7 +46,8 @@ bool HttpRequest::parse(const std::string& raw_request) {
             std::string key = line.substr(0, colon_pos);
             std::string value = line.substr(colon_pos + 1);
 
-            //strip any spaces or tabs
+            //strip any spaces or tabs Host: localhost:8080
+
             size_t start = value.find_first_not_of(" \t");
             if (start != std::string::npos) 
             value = value.substr(start);
