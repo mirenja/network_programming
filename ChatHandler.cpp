@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iomanip>
 #include <ctime> 
+#include "StateManager.h"
 
 ChatHandler::ChatHandler() {
     addMessage("System", "Welcome to the chat room!");
@@ -23,8 +24,19 @@ std::vector<ChatMessage> ChatHandler::getMessages() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return messages_;
 }
+void ChatHandler::loadState(StateManager& state_manager){
+    std::lock_guard<std::mutex> lock(mutex_);
+    messages_ = state_manager.loadMessages();
 
-std::string ChatHandler::generateChatPage() const {
+}
+
+void ChatHandler::saveState(StateManager& state_manager) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    state_manager.saveMessages(messages_);
+}
+
+
+std::string ChatHandler::generateChatPage(const std::string& current_username) const {
     std::ostringstream html;
     
     html << R"(
@@ -100,15 +112,20 @@ std::string ChatHandler::generateChatPage() const {
 </head>
 <body>
     <h1>Chat Room</h1>
-    
-    <div class="chat-container">
 )";
-    
+     if (!current_username.empty()) {
+        html << "    <div class=\"user-info\">\n"
+             << "        Logged in as: <span class=\"username\">" << current_username << "</span>\n"
+             << "    </div>\n";
+    }
+    html << "    <div class=\"chat-container\">\n";
     
     std::lock_guard<std::mutex> lock(mutex_);
     for (const auto& msg : messages_) {
-        html << "        <div class=\"message\">\n"
-             << "            <span class=\"username\">" << msg.username<< "</span>\n"
+        bool is_own = (!current_username.empty() && msg.username == current_username);
+        html << "        <div class=\"message" << (is_own ? " own-message" : "") << "\">\n"
+             << "            <span class=\"username" << (is_own ? " own" : "") << "\">" 
+             << msg.username << "</span>\n"
              << "            <span class=\"timestamp\">(" << msg.timestamp << ")</span>\n"
              << "            <div>" << msg.message << "</div>\n"
              << "        </div>\n";
@@ -117,10 +134,20 @@ std::string ChatHandler::generateChatPage() const {
     html << R"(    </div>
     
     <div class="input-form">
-        <form method="POST" action="/chat/send">
+        <form method="POST" action="/chat/send">)";
+    
+    if (current_username.empty()) {
+        html << R"(
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
-            
+)";
+    } else {
+        html << R"(
+            <input type="hidden" name="username" value=")" << current_username << R"(">
+)";
+    }
+    
+    html << R"(            
             <label for="message">Message:</label>
             <textarea id="message" name="message" rows="3" required></textarea>
             

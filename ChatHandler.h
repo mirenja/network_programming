@@ -4,6 +4,8 @@
 #include <vector>
 #include <mutex>
 
+class StateManager;
+
 struct ChatMessage {
     std::string username;
     std::string message;
@@ -15,7 +17,11 @@ public:
     ChatHandler();
     void addMessage(const std::string& username, const std::string& message);
     std::vector<ChatMessage> getMessages() const;
-    std::string generateChatPage() const;
+    std::string generateChatPage(const std::string& current_username = "") const;
+    
+    
+    void loadState(StateManager& state_manager);
+    void saveState(StateManager& state_manager) const;
     
 private:
     mutable std::mutex mutex_;
@@ -23,3 +29,5 @@ private:
     
     std::string getCurrentTimestamp() const;
 };
+
+

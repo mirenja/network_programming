@@ -1,47 +1,102 @@
 #include "HttpServer.h"
 #include <iostream>
 #include <sstream>
+#include <memory>
 
 HttpServer::HttpServer(int port) 
-    : port_(port), running_(false), connection_count_(0){
-    // : port_(port), running_(false), connection_count_(0),pool_(std::thread::hardware_concurrency()){ #with thread pool
+    : port_(port), running_(false), connection_count_(0) {
+    
+    // Initialize state manager
+    state_manager_ = std::make_unique<StateManager>("chat_state.dat");
+    
+    // ChatHandler loads its own state
+    chat_handler_.loadState(*state_manager_);
     
     registerRoute("/", [this](const HttpRequest& req) {
-        return HttpResponse::html(R"(
+        std::string username = getCurrentUser(req);
+        // std::string username = "Haven't added session mgmt yet";
+        std::ostringstream html;
+        
+        html << R"(
             <html>
             <head><title>HTTP Server</title></head>
-            <body>
-                <h1>Welcome to the HTTP Server</h1>
+            <body style="font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px;">
+                <h1>Welcome to the HTTP Server</h1>)";
+        
+        if (!username.empty()) {
+            html << "<p>Logged in as: <strong>" << username << "</strong></p>";
+        }
+        
+        html << R"(
                 <ul>
                     <li><a href="/chat">Go to Chat</a></li>
                     <li><a href="/admin/info">Server Info</a></li>
+                    <li><a href="/logout">Logout</a></li>
                 </ul>
             </body>
             </html>
-        )");
+        )";
+        
+        return HttpResponse::html(html.str());
     });
     
+    // Chat page route
     registerRoute("/chat", [this](const HttpRequest& req) {
-        return HttpResponse::html(chat_handler_.generateChatPage());
+        std::string username = getCurrentUser(req);
+        // std::string username = "Haven't added session mgmt yet";
+        return HttpResponse::html(chat_handler_.generateChatPage(username));
     });
     
-    registerRoute("/chat/send", [this](const HttpRequest& req) {
-        if (req.getMethod() == HttpRequest::Method::POST) {
-            std::string username = parseFormData(req.getBody(), "username");
-            std::string message = parseFormData(req.getBody(), "message");
-            
-            if (!username.empty() && !message.empty()) {
-                chat_handler_.addMessage(username, message);
-            }
-            
-            HttpResponse response(303, "See Other");
-            response.setHeader("Location", "/chat");
-            response.setBody("");
-            return response;
-        }
+    // Send message route
+   registerRoute("/chat/send", [this](const HttpRequest& req) {
+    if (req.getMethod() != HttpRequest::Method::POST) {
         return HttpResponse::badRequest();
-    });
+    }
+
+    // Message from form
+    std::string message = parseFormData(req.getBody(), "message");
+    if (message.empty()) {
+        return HttpResponse::badRequest();
+    }
+
+    // Session management
+    std::string cookie_header = req.getHeader("Cookie");
+    std::string session_id = session_manager_.parseSessionCookie(cookie_header);
+
+    UserSession* session = nullptr;
+
+    if (!session_id.empty()) {
+        session = session_manager_.getSession(session_id);
+    }
+
+    // No valid session → create one using username from form
+    if (!session) {
+        std::string username = parseFormData(req.getBody(), "username");
+        if (username.empty()) {
+            return HttpResponse::badRequest();
+        }
+
+        session_id = session_manager_.createSession(username);
+        session = session_manager_.getSession(session_id);
+    } else {
+        session_manager_.updateActivity(session_id);
+    }
+
+    chat_handler_.addMessage(session->username, message);
+    session->message_count++;
+
+    saveState();
+
+  
+    HttpResponse response(303, "See Other");
+    response.setHeader("Location", "/chat");
+    response.setHeader("Set-Cookie",session_manager_.generateSetCookieHeader(session_id));
+    response.setBody("");
+    return response;
+});
+
     
+    // Admin info route
     registerRoute("/admin/info", [this](const HttpRequest& req) {
         std::ostringstream info;
         info << "HTTP Server Status\n"
@@ -51,6 +106,50 @@ HttpServer::HttpServer(int port)
              << "Chat Messages: " << chat_handler_.getMessages().size() << "\n";
         return HttpResponse::ok(info.str());
     });
+    
+    // Logout route
+    registerRoute("/logout", [this](const HttpRequest& req) {
+        std::string cookie_header = req.getHeader("Cookie");
+        std::string session_id = session_manager_.parseSessionCookie(cookie_header);
+
+        if (!session_id.empty()) {
+            session_manager_.deleteSession(session_id);
+        }
+
+        HttpResponse response(303, "See Other");
+        response.setHeader("Location", "/");
+        response.setHeader(
+            "Set-Cookie",
+            "session_id=; Path=/; HttpOnly; Max-Age=0"
+        );
+        response.setBody("");
+        return response;
+    });
+};
+
+HttpServer::~HttpServer() {
+    saveState();
+}
+
+std::string HttpServer::getCurrentUser(const HttpRequest& request) {
+    std::string cookie_header = request.getHeader("Cookie");
+    std::string session_id = session_manager_.parseSessionCookie(cookie_header);
+    
+    if (session_id.empty()) {
+        return "";
+    }
+    
+    UserSession* session = session_manager_.getSession(session_id);
+    if (session) {
+        session_manager_.updateActivity(session_id);
+        return session->username;
+    }
+    
+    return "";
+}
+
+void HttpServer::saveState() {
+    chat_handler_.saveState(*state_manager_);
 }
 
 void HttpServer::registerRoute(const std::string& path, RouteHandler handler) {
@@ -82,17 +181,17 @@ void HttpServer::run() {
         std::cout << "[CLIENT CONNECTED]\n";
         
         connection_count_++;
-        // active_connections_++;
         
-        // pool_.enqueue([this, client=std::move(client)]() mutable {
+        // Clean up expired sessions periodically
+        if (connection_count_ % 10 == 0) {
+            session_manager_.cleanupExpiredSessions();
+        }
+        
         handleClient(std::move(client_socket));
-        // active_connections_--;
-    // });
     }
 }
 
 void HttpServer::handleClient(Socket client_socket) {
-  
     std::string raw_request = client_socket.receive();
     
     if (raw_request.empty()) {
@@ -102,7 +201,6 @@ void HttpServer::handleClient(Socket client_socket) {
     std::cout << "\n=== Request ===" << std::endl;
     std::cout << raw_request.substr(0, 200) << "..." << std::endl;
     
-    // parses into headers map and body , then send the response
     HttpRequest request;
     if (!request.parse(raw_request)) {
         std::cerr << "Failed to parse request" << std::endl;
@@ -110,18 +208,14 @@ void HttpServer::handleClient(Socket client_socket) {
         return;
     }
     
-  
     HttpResponse response = routeRequest(request);
     
-
     std::string response_str = response.build();
     client_socket.send(response_str);
     
     std::cout << "Sent " << response_str.size() << " bytes" << std::endl;
 }
 
-//here we are using a reference we could just use th request object directlc also , but that would be expensive since at runtime,
-//copies of the object will be created which will then
 HttpResponse HttpServer::routeRequest(const HttpRequest& request) {
     std::string path = request.getPath();
     
@@ -134,7 +228,6 @@ HttpResponse HttpServer::routeRequest(const HttpRequest& request) {
 }
 
 std::string HttpServer::parseFormData(const std::string& body, const std::string& key) {
-    
     std::string search = key + "=";
     size_t pos = body.find(search);
     
@@ -149,7 +242,6 @@ std::string HttpServer::parseFormData(const std::string& body, const std::string
                         ? body.substr(start) 
                         : body.substr(start, end - start);
     
-
     std::string decoded;
     for (size_t i = 0; i < value.length(); ++i) {
         if (value[i] == '+') {
@@ -168,4 +260,5 @@ std::string HttpServer::parseFormData(const std::string& body, const std::string
 
 void HttpServer::stop() {
     running_ = false;
+    saveState();
 }

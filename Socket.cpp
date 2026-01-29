@@ -8,7 +8,7 @@
 Socket::Socket() 
     : fd_(-1), bound_(false), listening_(false) 
 {
-     // create socket file descriptor(fd)
+     // create socket file descriptor(fd) `SOCK_DGRAM` for UDP
     fd_ = socket(AF_INET, SOCK_STREAM, 0);
     std::cout << "Socket created with FD = " << fd_ << std::endl;
     if (fd_ < 0) {
